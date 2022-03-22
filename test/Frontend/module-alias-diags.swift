@@ -1,5 +1,5 @@
 /// Test diagnostics with module aliasing.
-///
+/// TEST
 /// Module 'Lib' imports module 'XLogging', and 'XLogging' is aliased 'AppleLogging'.
 
 // RUN: %empty-directory(%t)
