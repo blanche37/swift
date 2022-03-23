@@ -48,14 +48,17 @@ const ValueDecl *getProtocolRequirement(const ValueDecl *VD) {
 } // end anonymous namespace
 
 void Edge::serialize(llvm::json::OStream &OS) const {
+  SmallString<256> SourceUSR, TargetUSR;
+  Source.getUSR(SourceUSR);
+  Target.getUSR(TargetUSR);
+
+  assert(SourceUSR != TargetUSR);
+
   OS.object([&](){
     OS.attribute("kind", Kind.Name);
-    SmallString<256> SourceUSR, TargetUSR;
 
-    Source.getUSR(SourceUSR);
     OS.attribute("source", SourceUSR.str());
 
-    Target.getUSR(TargetUSR);
     OS.attribute("target", TargetUSR.str());
 
     // In case a dependent module isn't available, serialize a fallback name.

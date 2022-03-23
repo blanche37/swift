@@ -21,6 +21,22 @@
 using namespace swift;
 using namespace symbolgraphgen;
 
+namespace {
+
+NominalTypeDecl *getSynthesizedBaseType(const Decl *D) {
+  if (const auto *Extension = dyn_cast<ExtensionDecl>(D)) {
+    return Extension->getExtendedNominal();
+  } else if (const auto *VD = dyn_cast<ValueDecl>(D)) {
+    if (VD->getOverriddenDecl() && D->isImplicit()) {
+      return VD->getDeclContext()->getSelfNominalTypeDecl();
+    }
+  }
+
+  return nullptr;
+}
+
+} // anonymous namespace
+
 SymbolGraphASTWalker::SymbolGraphASTWalker(ModuleDecl &M,
                                            const SmallPtrSet<ModuleDecl *, 4> ExportedImportedModules,
                                            const SymbolGraphOptions &Options)
@@ -117,18 +133,18 @@ bool SymbolGraphASTWalker::walkToDeclPre(Decl *D, CharSourceRange Range) {
   }
 
   auto SG = getModuleSymbolGraph(D);
+  const auto *BaseTypeDecl = getSynthesizedBaseType(D);
 
   // If this is an extension, let's check that it implies some new conformances,
   // potentially with generic requirements.
   if (const auto *Extension = dyn_cast<ExtensionDecl>(D)) {
-    const auto *ExtendedNominal = Extension->getExtendedNominal();
-    auto ExtendedSG = getModuleSymbolGraph(ExtendedNominal);
+    auto ExtendedSG = getModuleSymbolGraph(BaseTypeDecl);
     // Ignore effectively private decls.
     if (ExtendedSG->isImplicitlyPrivate(Extension)) {
       return false;
     }
 
-    if (isUnavailableOrObsoleted(ExtendedNominal)) {
+    if (isUnavailableOrObsoleted(BaseTypeDecl)) {
       return false;
     }
 
@@ -166,7 +182,7 @@ bool SymbolGraphASTWalker::walkToDeclPre(Decl *D, CharSourceRange Range) {
         }
       }
 
-      Symbol Source(ExtendedSG, ExtendedNominal, nullptr);
+      Symbol Source(ExtendedSG, BaseTypeDecl, nullptr);
 
       for (const auto *Proto : Protocols) {
         Symbol Target(&MainGraph, Proto, nullptr);
@@ -177,10 +193,10 @@ bool SymbolGraphASTWalker::walkToDeclPre(Decl *D, CharSourceRange Range) {
       // While we won't record this node per se, or all of the other kinds of
       // relationships, we might establish some synthesized members because we
       // extended an external type.
-      if (ExtendedNominal->getModuleContext() != &M) {
+      if (BaseTypeDecl->getModuleContext() != &M) {
         ExtendedSG->recordConformanceSynthesizedMemberRelationships({
           ExtendedSG,
-          ExtendedNominal,
+          BaseTypeDecl,
           nullptr
         });
       }
@@ -211,7 +227,7 @@ bool SymbolGraphASTWalker::walkToDeclPre(Decl *D, CharSourceRange Range) {
   }
 
   // Otherwise, record this in the main module `M`'s symbol graph.
-  SG->recordNode(Symbol(SG, VD, nullptr));
+  SG->recordNode(Symbol(SG, VD, BaseTypeDecl));
 
   return true;
 }

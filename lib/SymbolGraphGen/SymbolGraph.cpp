@@ -460,7 +460,7 @@ SymbolGraph::recordConformanceRelationships(Symbol S) {
 void SymbolGraph::recordOverrideRelationship(Symbol S) {
   const auto VD = S.getSymbolDecl();
   if (const auto *Override = VD->getOverriddenDecl()) {
-    recordEdge(Symbol(this, VD, nullptr),
+    recordEdge(Symbol(this, VD, S.getSynthesizedBaseTypeDecl()),
                Symbol(this, Override, nullptr),
                RelationshipKind::Overrides());
   }

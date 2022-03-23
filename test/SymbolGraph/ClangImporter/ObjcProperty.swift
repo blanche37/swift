@@ -10,4 +10,19 @@ import Foundation
 
 public enum SwiftEnum {}
 
+// ensure that children of clang nodes appear in the symbol graph
+
 // CHECK: "precise": "c:objc(cs)Foo(py)today"
+
+// ensure that implicit/inherited clang symbols (i.e. inherited constructors/properties in objc) are
+// given synthesized USRs that don't conflict with their parent symbol
+
+// CHECK-LABEL:  "relationships"
+// CHECK:            "kind": "overrides"
+// CHECK-NEXT:       "source": "c:objc(cs)NSObject(im)init::SYNTHESIZED::c:objc(cs)Foo"
+// CHECK-NEXT:       "target": "c:objc(cs)NSObject(im)init"
+// CHECK-NEXT:       "targetFallback": "ObjectiveC.NSObject.init()"
+// CHECK-NEXT:       "sourceOrigin": {
+// CHECK-NEXT:         "identifier": "c:objc(cs)NSObject(im)init"
+// CHECK-NEXT:         "displayName": "Foo.init()"
+// CHECK-NEXT:       }
